@@ -1,49 +1,65 @@
 package com.example.roomie.ui
 
-import android.content.Intent
-import android.net.Uri
+import androidx.compose.foundation.Text
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumnFor
-import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.ContextAmbient
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.roomie.model.Room
+import com.example.roomie.model.RoomOffer
 import java.text.NumberFormat
+import java.time.Duration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
+fun durationToString(duration: Duration): String {
+
+    if (duration.toDays() < 1) {
+        val hours = duration.toHours()
+
+        return if (hours > 0) {
+            "${hours}h left"
+        } else {
+            val minutes = duration.toMinutes() - (60 * hours)
+            "${hours}h ${minutes}m left"
+        }
+    }
+
+    return ""
+
+}
+
 @Composable
-private fun RoomRow(room: Room, onUserClick: (Room) -> Unit) {
+fun RoomOfferRow(roomOffer: RoomOffer, onUserClick: (RoomOffer) -> Unit) {
 
     val dateFormat = DateTimeFormatter.ofPattern("MMM d")
         .withLocale(Locale.getDefault())
         .withZone(ZoneId.systemDefault());
 
     // Calculate time remaining
-    val interval = room.timeRemaining()
-    val intervalStr = if (interval.toDays() < 1) "${interval.toHours()}h left" else ""
+    val timeRemaining = roomOffer.timeRemaining()
 
     // Create info line
-    val surface = "${room.surface}m\u00B2"
+    val surface = "${roomOffer.surface}m\u00B2"
     val available =
-        if (room.availableFrom != null) "Available ${dateFormat.format(room.availableFrom)}" else ""
-    val floor = room.floor
+        if (roomOffer.availableFrom != null) "Available ${dateFormat.format(roomOffer.availableFrom)}" else ""
+    val floor = roomOffer.floor
 
-    Row(modifier = Modifier.clickable(onClick = { onUserClick(room) }).fillMaxWidth().padding(8.dp)) {
+    Row(modifier = Modifier.clickable(onClick = { onUserClick(roomOffer) }).fillMaxWidth().padding(8.dp)) {
         Column(modifier = Modifier.padding(start = 8.dp).align(Alignment.CenterVertically).weight(0.8F)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = room.address, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
-                Text(text = intervalStr, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
+                Text(text = roomOffer.address, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
+                Text(
+                    text = durationToString(timeRemaining),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.subtitle1
+                )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
                 Text(text = available, style = MaterialTheme.typography.body2)
@@ -54,13 +70,13 @@ private fun RoomRow(room: Room, onUserClick: (Room) -> Unit) {
             }
         }
         Box(alignment = Alignment.Center, modifier = Modifier.align(Alignment.CenterVertically).weight(0.2F)) {
-            PriceBox(room.totalRent)
+            RoomPrice(roomOffer.totalRent)
         }
     }
 }
 
 @Composable
-fun PriceBox(totalRent: Float) {
+private fun RoomPrice(totalRent: Float) {
     val moneyFormat: NumberFormat = NumberFormat.getCurrencyInstance()
     moneyFormat.currency = Currency.getInstance("EUR")
     moneyFormat.maximumFractionDigits = 0
@@ -72,17 +88,4 @@ fun PriceBox(totalRent: Float) {
         textAlign = TextAlign.Center,
         fontSize = 20.sp
     )
-}
-
-@Composable
-fun RoomList(roomList: List<Room>) {
-    val context = ContextAmbient.current
-    LazyColumnFor(items = roomList) { room ->
-        RoomRow(room = room, onUserClick = {
-            // Open listing browser
-            val url = "https://www.room.nl/aanbod/studentenwoningen/details/${room.urlKey}"
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        })
-        Divider()
-    }
 }
